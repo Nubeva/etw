@@ -1,4 +1,5 @@
-//+build windows
+//go:build windows
+// +build windows
 
 // Package etw allows you to receive Event Tracing for Windows (ETW) events.
 //
@@ -31,12 +32,11 @@ import (
 //
 // Having ExistsError you have an option to force kill the session:
 //
-//		var exists etw.ExistsError
-//		s, err = etw.NewSession(s.guid, etw.WithName(sessionName))
-//		if errors.As(err, &exists) {
-//			err = etw.KillSession(exists.SessionName)
-//		}
-//
+//	var exists etw.ExistsError
+//	s, err = etw.NewSession(s.guid, etw.WithName(sessionName))
+//	if errors.As(err, &exists) {
+//		err = etw.KillSession(exists.SessionName)
+//	}
 type ExistsError struct{ SessionName string }
 
 func (e ExistsError) Error() string {
@@ -322,7 +322,10 @@ func (s *Session) processEvents(callbackContextKey uintptr) error {
 		(C.LPWSTR)(unsafe.Pointer(&s.etwSessionName[0])),
 		(C.PVOID)(callbackContextKey),
 	)
-	if C.INVALID_PROCESSTRACE_HANDLE == traceHandle {
+	// Avoid comparing with the C negative INVALID_PROCESSTRACE_HANDLE directly in Go.
+	// Compare against the all-ones unsigned value instead to handle arm64 correctly.
+	const invalidProcessTraceHandle = ^uint64(0)
+	if uint64(traceHandle) == invalidProcessTraceHandle {
 		return fmt.Errorf("OpenTraceW failed; %w", windows.GetLastError())
 	}
 
