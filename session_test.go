@@ -1,3 +1,4 @@
+//go:build windows
 // +build windows
 
 package etw_test
@@ -13,7 +14,7 @@ import (
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/sys/windows"
 
-	"github.com/bi-zone/etw"
+	"github.com/Nubeva/etw"
 )
 
 func TestSession(t *testing.T) {
