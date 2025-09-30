@@ -11,17 +11,6 @@
 // pointer to C not warning CGO checker.
 TRACEHANDLE OpenTraceHelper(LPWSTR name, PVOID ctx);
 
-// Native ETW processing counters (exported for Go)
-typedef struct {
-    unsigned long long callbacks; // number of times stdcallHandleEvent was invoked
-    unsigned long long time_in_callback_ns; // cumulative QPC time spent inside stdcallHandleEvent (including Go callback)
-    unsigned long long time_between_callbacks_ns; // cumulative QPC time between consecutive callbacks
-    unsigned long long open_trace_calls; // times OpenTraceHelper was called
-} EtwCounters;
-
-void etw_get_counters(EtwCounters* out);
-void etw_reset_counters(void);
-
 // GetArraySize extracts a size of array located at property @i.
 ULONG GetArraySize(PEVENT_RECORD event, PTRACE_EVENT_INFO info, int idx, UINT32* count);
 
