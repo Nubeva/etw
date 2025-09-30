@@ -1,4 +1,5 @@
-//+build windows
+//go:build windows
+// +build windows
 
 package etw
 
@@ -14,6 +15,31 @@ import (
 
 	"golang.org/x/sys/windows"
 )
+
+// Mirror of C EtwCounters for Go access
+type NativeCounters struct {
+	Callbacks                 uint64
+\tTimeInCallbackNs          uint64
+\tTimeBetweenCallbacksNs    uint64
+\tOpenTraceCalls            uint64
+}
+
+// GetNativeCounters returns snapshot of C-side ETW counters.
+func GetNativeCounters() NativeCounters {
+\tvar c C.EtwCounters
+\tC.etw_get_counters(&c)
+\treturn NativeCounters{
+\t\tCallbacks:              uint64(c.callbacks),
+\t\tTimeInCallbackNs:       uint64(c.time_in_callback_ns),
+\t\tTimeBetweenCallbacksNs: uint64(c.time_between_callbacks_ns),
+\t\tOpenTraceCalls:         uint64(c.open_trace_calls),
+\t}
+}
+
+// ResetNativeCounters resets C-side ETW counters.
+func ResetNativeCounters() {
+\tC.etw_reset_counters()
+}
 
 // Event is a single event record received from ETW provider. The only thing
 // that is parsed implicitly is an EventHeader (which just translated from C
@@ -88,9 +114,9 @@ type EventDescriptor struct {
 // EventProperties returns a map that could be interpreted as "structure that
 // fit inside a map". Map keys is a event data field names, map values is field
 // values rendered to strings. So map values could be one of the following:
-//		- `[]string` for arrays of any types;
-//		- `map[string]interface{}` for fields that are structures;
-//		- `string` for any other values.
+//   - `[]string` for arrays of any types;
+//   - `map[string]interface{}` for fields that are structures;
+//   - `string` for any other values.
 //
 // Take a look at `TestParsing` for possible EventProperties values.
 func (e *Event) EventProperties() (map[string]interface{}, error) {

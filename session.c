@@ -6,8 +6,39 @@
 // callback with a stdcall one.
 extern void handleEvent(PEVENT_RECORD e);
 
+// High-resolution timer helpers and native counters
+static inline ULONGLONG qpc_now() {
+    LARGE_INTEGER li;
+    QueryPerformanceCounter(&li);
+    return (ULONGLONG)li.QuadPart;
+}
+static inline ULONGLONG qpc_freq_qpc() {
+    static ULONGLONG freq = 0;
+    if (freq == 0) {
+        LARGE_INTEGER li;
+        QueryPerformanceFrequency(&li);
+        freq = (ULONGLONG)li.QuadPart;
+    }
+    return freq;
+}
+
+static volatile ULONGLONG c_callbacks = 0;
+static volatile ULONGLONG c_time_in_callback_qpc = 0;
+static volatile ULONGLONG c_time_between_callbacks_qpc = 0;
+static volatile ULONGLONG c_open_trace_calls = 0;
+static volatile ULONGLONG c_last_cb_qpc = 0;
+
 void WINAPI stdcallHandleEvent(PEVENT_RECORD e) {
+    ULONGLONG start = qpc_now();
+    ULONGLONG prev = c_last_cb_qpc;
+    if (prev != 0) {
+        c_time_between_callbacks_qpc += (start - prev);
+    }
     handleEvent(e);
+    ULONGLONG end = qpc_now();
+    c_time_in_callback_qpc += (end - start);
+    c_last_cb_qpc = end;
+    c_callbacks++;
 }
 
 // OpenTraceHelper helps to access EVENT_TRACE_LOGFILEW union fields and pass
@@ -19,6 +50,7 @@ TRACEHANDLE OpenTraceHelper(LPWSTR name, PVOID ctx) {
     trace.ProcessTraceMode = PROCESS_TRACE_MODE_REAL_TIME | PROCESS_TRACE_MODE_EVENT_RECORD;
     trace.EventRecordCallback = stdcallHandleEvent;
 
+    c_open_trace_calls++;
     return OpenTraceW(&trace);
 }
 
@@ -171,4 +203,24 @@ ULONG GetAddress32(PEVENT_EXTENDED_ITEM_STACK_TRACE32 trace32, int j) {
 
 ULONGLONG GetAddress64(PEVENT_EXTENDED_ITEM_STACK_TRACE64 trace64, int j) {
    return trace64->Address[j];
+}
+
+// Exported counters accessors for Go.
+void etw_get_counters(EtwCounters* out) {
+    if (!out) return;
+    ULONGLONG f = qpc_freq_qpc();
+    ULONGLONG in_ns = f ? (c_time_in_callback_qpc * 1000000000ULL) / f : 0;
+    ULONGLONG btw_ns = f ? (c_time_between_callbacks_qpc * 1000000000ULL) / f : 0;
+    out->callbacks = c_callbacks;
+    out->time_in_callback_ns = in_ns;
+    out->time_between_callbacks_ns = btw_ns;
+    out->open_trace_calls = c_open_trace_calls;
+}
+
+void etw_reset_counters(void) {
+    c_callbacks = 0;
+    c_time_in_callback_qpc = 0;
+    c_time_between_callbacks_qpc = 0;
+    c_open_trace_calls = 0;
+    c_last_cb_qpc = 0;
 }
