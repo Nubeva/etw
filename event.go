@@ -18,27 +18,27 @@ import (
 
 // Mirror of C EtwCounters for Go access
 type NativeCounters struct {
-	Callbacks                 uint64
-\tTimeInCallbackNs          uint64
-\tTimeBetweenCallbacksNs    uint64
-\tOpenTraceCalls            uint64
+	Callbacks              uint64
+	TimeInCallbackNs       uint64
+	TimeBetweenCallbacksNs uint64
+	OpenTraceCalls         uint64
 }
 
 // GetNativeCounters returns snapshot of C-side ETW counters.
 func GetNativeCounters() NativeCounters {
-\tvar c C.EtwCounters
-\tC.etw_get_counters(&c)
-\treturn NativeCounters{
-\t\tCallbacks:              uint64(c.callbacks),
-\t\tTimeInCallbackNs:       uint64(c.time_in_callback_ns),
-\t\tTimeBetweenCallbacksNs: uint64(c.time_between_callbacks_ns),
-\t\tOpenTraceCalls:         uint64(c.open_trace_calls),
-\t}
+	var c C.EtwCounters
+	C.etw_get_counters(&c)
+	return NativeCounters{
+		Callbacks:              uint64(c.callbacks),
+		TimeInCallbackNs:       uint64(c.time_in_callback_ns),
+		TimeBetweenCallbacksNs: uint64(c.time_between_callbacks_ns),
+		OpenTraceCalls:         uint64(c.open_trace_calls),
+	}
 }
 
 // ResetNativeCounters resets C-side ETW counters.
 func ResetNativeCounters() {
-\tC.etw_reset_counters()
+	C.etw_reset_counters()
 }
 
 // Event is a single event record received from ETW provider. The only thing
